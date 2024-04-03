@@ -58,6 +58,9 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
   if (!msg.text.startsWith('/') && authenticatedUsers[chatId]) {
+    // Indicate that the bot is "typing"
+    bot.sendChatAction(chatId, 'typing');
+
     // If the message is not a command and the user is authenticated, handle the message.
     // Your code to send chat message to AI and get a response
     try {
