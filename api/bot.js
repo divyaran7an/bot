@@ -7,7 +7,7 @@ const bot = new TelegramBot(token);
 
 // Webhook setup
 // Replace 'https://your-vercel-app.vercel.app' with your actual Vercel app URL
-const webhookUrl = 'https://your-vercel-app.vercel.app/api/telegramBot';
+const webhookUrl = 'https://bot-lime.vercel.app/api/bot';
 bot.setWebHook(`${webhookUrl}/${token}`);
 
 const authenticatedUsers = {};
