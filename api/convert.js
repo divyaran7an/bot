@@ -1,16 +1,26 @@
 const express = require('express');
 const axios = require('axios');
 const { execSync } = require('child_process');
+const ytdl = require('youtube-dl-exec');
 
 const app = express();
 app.use(express.json());
 
 const ASSEMBLYAI_API_KEY = "44a59a5f79334612ac64ab85f9196d22";
 
-function getAudioUrl(videoId) {
+async function getAudioUrl(videoId) {
   try {
-    const command = `yt-dlp -f bestaudio --get-url https://www.youtube.com/watch?v=${videoId}`;
-    const audioUrl = execSync(command).toString().trim();
+    const result = await ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
+      dumpSingleJson: true,
+      noWarnings: true,
+      noCallHome: true,
+      noCheckCertificate: true,
+      preferFreeFormats: true,
+      youtubeSkipDashManifest: true,
+      extractAudio: true,
+      audioFormat: 'best',
+    });
+    const audioUrl = result.url;
     console.log(`Audio URL: ${audioUrl}`); // Debug: Log the audio URL
     return audioUrl;
   } catch (error) {
