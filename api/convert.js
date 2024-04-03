@@ -1,67 +1,31 @@
-const express = require('express');
-const axios = require('axios');
-const { execSync } = require('child_process');
-const ytdl = require('youtube-dl-exec');
+const fetch = require('node-fetch');
 
-const app = express();
-app.use(express.json());
+// TranscribeTube endpoint template
+const TRANSCRIBETUBE_API_URL = 'https://tapi.transcribetube.com/api/v1/transcript/{videoId}?apikey=4e6MWJXqCx@oQ5?pPEhLDPO%jLedCkPdaxMPh&jAMbV5#uFy';
 
-const ASSEMBLYAI_API_KEY = "44a59a5f79334612ac64ab85f9196d22";
+async function getVideoTranscription(videoId) {
+  const apiUrl = TRANSCRIBETUBE_API_URL.replace('{videoId}', videoId);
 
-async function getAudioUrl(videoId) {
   try {
-    const result = await ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      noCallHome: true,
-      noCheckCertificate: true,
-      preferFreeFormats: true,
-      youtubeSkipDashManifest: true,
-      extractAudio: true,
-      audioFormat: 'best',
-    });
-    const audioUrl = result.url;
-    console.log(`Audio URL: ${audioUrl}`); // Debug: Log the audio URL
-    return audioUrl;
-  } catch (error) {
-    console.error(`Error getting audio URL for video ${videoId}:`, error); // Debug: Log errors
-    throw error;
-  }
-}
-
-async function transcribeAudio(audioUrl) {
-  try {
-    const response = await axios.post('https://api.assemblyai.com/v2/transcript', {
-      audio_url: audioUrl,
-    }, {
-      headers: {
-        'authorization': ASSEMBLYAI_API_KEY,
-        'Content-Type': 'application/json',
-      },
-    });
-    console.log(`Transcription response:`, response.data); // Debug: Log the response
-    return response.data;
-  } catch (error) {
-    console.error(`Error transcribing audio:`, error); // Debug: Log errors
-    throw error;
-  }
-}
-
-app.post('/api/convert', async (req, res) => {
-  try {
-    const videoId = req.body.videoId;
-    if (!videoId) {
-      return res.status(400).json({ error: 'Video ID is required' });
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`API call failed with status: ${response.status}`);
     }
-
-    console.log(`Request received for video ID: ${videoId}`); // Debug: Log the video ID
-    const audioUrl = await getAudioUrl(videoId);
-    const transcription = await transcribeAudio(audioUrl);
-    res.json(transcription);
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error(`Error in /api/convert endpoint:`, error); // Debug: Log endpoint errors
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Failed to fetch video transcription:', error);
+    throw error;
   }
-});
+}
 
-module.exports = app;
+module.exports = async (req, res) => {
+  const { videoId } = req.query;
+
+  try {
+    const transcription = await getVideoTranscription(videoId);
+    res.status(200).json(transcription);
+  } catch (error) {
+    res.status(500).send('Internal Server Error');
+  }
+};
