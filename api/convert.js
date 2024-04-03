@@ -61,7 +61,7 @@ async function getVideoCaptions(videoId, auth) {
 // Main function to run the script
 async function main() {
  const auth = await authorize();
- const videoId = 'YOUR_VIDEO_ID_HERE'; // Replace with your video ID
+ const videoId = 'f2kNGLAAUdY'; // Replace with your video ID
  const captions = await getVideoCaptions(videoId, auth);
  console.log(captions);
 }
