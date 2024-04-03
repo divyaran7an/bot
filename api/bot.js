@@ -1,14 +1,21 @@
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 
-// Replace with your actual Telegram bot token
+// Use your actual Telegram bot token
 const token = '6764939618:AAGJ8XSHH6N7yShX4SoIF0eFj9c7yZ4iyqY';
 const bot = new TelegramBot(token);
+
+// In-memory storage of authenticated users
+const authenticatedUsers = {};
 
 // Handler for the /start command
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, "Welcome to the Capx Bot! Use /auth <hash> to authenticate, /earnings <hash> to check your earnings, or just send a message to chat with the AI assistant.");
+  if (authenticatedUsers[chatId]) {
+    bot.sendMessage(chatId, "Welcome back! You are already authenticated and can use the bot.");
+  } else {
+    bot.sendMessage(chatId, "Welcome to the Capx Bot! Please authenticate using /auth <hash> to use the bot.");
+  }
 });
 
 // Endpoint to authenticate a user with a given hash
@@ -22,6 +29,7 @@ bot.onText(/\/auth (.+)/, async (msg, match) => {
     });
 
     if (response.data.user) {
+      authenticatedUsers[chatId] = response.data.user;  // Store user as authenticated
       bot.sendMessage(chatId, `Login successful: ${response.data.message}\nName: ${response.data.user.name}\nWallet Address: ${response.data.user.walletAddress}\nPoints: ${response.data.user.points}`);
     } else {
       bot.sendMessage(chatId, `Login successful: ${response.data.message}`);
@@ -31,50 +39,44 @@ bot.onText(/\/auth (.+)/, async (msg, match) => {
   }
 });
 
-// Endpoint to send a chat message and receive a response from an AI assistant
-bot.on('message', async (msg) => {
+// Endpoint to retrieve earnings for a user
+bot.onText(/\/earnings/, async (msg) => {
   const chatId = msg.chat.id;
-  if (msg.text.startsWith('/')) {
-    // If the message is a command, we've already set handlers for /start, /auth, /earnings.
-    // You can add additional command handlers here if needed.
+
+  if (!authenticatedUsers[chatId]) {
+    bot.sendMessage(chatId, "You must authenticate first using /auth <hash>.");
     return;
   }
 
-  try {
-    const response = await axios.get('https://chat-2jda.vercel.app/api/chat', {
-      params: { text: msg.text }
-    });
-
-    bot.sendMessage(chatId, `AI Response: ${response.data.generatedText}`);
-  } catch (error) {
-    bot.sendMessage(chatId, `Error: ${error.response?.data?.error || 'Unknown error'}`);
-  }
+  // Your code to handle earnings here...
+  // For example:
+  bot.sendMessage(chatId, "You have 100 earnings.");
 });
 
-// Endpoint to retrieve earnings for a user
-bot.onText(/\/earnings (.+)/, async (msg, match) => {
+// General message handler
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const hash = match[1];
 
-  try {
-    const response = await axios.get('https://chat-2jda.vercel.app/api/earnings', {
-      params: { hash }
-    });
-
-    bot.sendMessage(chatId, `Earnings: ${response.data.message}`);
-  } catch (error) {
-    bot.sendMessage(chatId, `Error: ${error.response?.data?.message || 'Unknown error'}`);
+  if (!msg.text.startsWith('/') && authenticatedUsers[chatId]) {
+    // If the message is not a command and the user is authenticated, handle the message.
+    // Your code to send chat message to AI and get a response
+    try {
+      const response = await axios.get('https://chat-2jda.vercel.app/api/chat', {
+        params: { text: msg.text }
+      });
+      bot.sendMessage(chatId, `AI Response: ${response.data.generatedText}`);
+    } catch (error) {
+      bot.sendMessage(chatId, `Error: ${error.response?.data?.error || 'Unknown error'}`);
+    }
+  } else if (!authenticatedUsers[chatId]) {
+    bot.sendMessage(chatId, "You must authenticate first using /auth <hash>.");
   }
 });
 
 // This is the function that Vercel will run when your endpoint is hit.
 module.exports = (req, res) => {
-  if (req.body) { // Make sure there's a request body
-    const { message } = req.body;
-    if (message) { // If there's a message, handle it
-      bot.processUpdate(req.body); // This will process the message
-    }
+  if (req.body) {
+    bot.processUpdate(req.body);
   }
-  
-  res.status(200).send('Bot is running'); // Respond to Vercel to let it know our function is running
+  res.status(200).send('Bot is running');
 };
