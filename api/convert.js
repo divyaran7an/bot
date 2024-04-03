@@ -55,7 +55,7 @@ app.post('/api/convert', async (req, res) => {
     }
 
     console.log(`Request received for video ID: ${videoId}`); // Debug: Log the video ID
-    const audioUrl = getAudioUrl(videoId);
+    const audioUrl = await getAudioUrl(videoId);
     const transcription = await transcribeAudio(audioUrl);
     res.json(transcription);
   } catch (error) {
