@@ -2,7 +2,8 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 
 // Replace with your actual Telegram bot token
-const bot = new TelegramBot('6764939618:AAGJ8XSHH6N7yShX4SoIF0eFj9c7yZ4iyqY');
+const token = '6764939618:AAGJ8XSHH6N7yShX4SoIF0eFj9c7yZ4iyqY';
+const bot = new TelegramBot(token);
 
 // Handler for the /start command
 bot.onText(/\/start/, (msg) => {
