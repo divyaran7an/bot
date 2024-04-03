@@ -1,14 +1,8 @@
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 
-// Hardcoded token for demonstration purposes. Replace it with environment variable later.
 const token = '6764939618:AAGJ8XSHH6N7yShX4SoIF0eFj9c7yZ4iyqY';
-const bot = new TelegramBot(token);
-
-// Webhook setup
-// Replace 'https://your-vercel-app.vercel.app' with your actual Vercel app URL
-const webhookUrl = 'https://your-vercel-app.vercel.app/api/telegramBot';
-bot.setWebHook(`${webhookUrl}/${token}`);
+const bot = new TelegramBot(token, { polling: true });
 
 const authenticatedUsers = {};
 
@@ -65,7 +59,6 @@ bot.on('message', async (msg) => {
   }
 });
 
-// Serverless function handler for Vercel
 module.exports = (req, res) => {
   if (req.body) {
     bot.processUpdate(req.body);
