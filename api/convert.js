@@ -1,41 +1,69 @@
-const fetch = require('node-fetch');
+const fs = require('fs');
+const readline = require('readline');
+const {google} = require('googleapis');
+const OAuth2 = google.auth.OAuth2;
 
-// Your YouTube Data API key
-const API_KEY = 'AIzaSyAsXTLiSZnAkM2BGcrxQ28lHMedXiNmr-o';
+// Your OAuth 2.0 credentials
+const CLIENT_ID = '701835730412-rh1adur82n4t8om1vec154j797milkpg.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const REDIRECT_URL = 'http://www.google.com'; // You can use any URL here since we're manually handling the token
+const SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl'];
 
-async function getVideoCaptions(videoId) {
-  // Construct the API URL to get video caption tracks
-  const captionsUrl = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${API_KEY}`;
+// The path to store the token
+const TOKEN_PATH = 'token.json';
 
-  try {
-    const response = await fetch(captionsUrl);
-    const data = await response.json();
+// Function to authorize and get the access token
+async function authorize() {
+ const oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 
-    // Extract the first available caption track (if any)
-    if (data.items.length > 0) {
-      const trackId = data.items[0].id;
-      // Construct the URL to download the caption track
-      const downloadUrl = `https://www.googleapis.com/youtube/v3/captions/${trackId}?key=${API_KEY}`;
-      // Fetch and return the caption content
-      const captionsResponse = await fetch(downloadUrl);
-      const captionsText = await captionsResponse.text();
-      return captionsText;
-    } else {
-      return 'No captions available for this video.';
-    }
-  } catch (error) {
-    console.error('Failed to fetch video captions:', error);
-    throw new Error('Failed to fetch video captions');
-  }
+ // Check if we have previously stored a token.
+ if (fs.existsSync(TOKEN_PATH)) {
+    oauth2Client.setCredentials(JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8')));
+ } else {
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: SCOPES,
+    });
+    console.log('Authorize this app by visiting this url:', authUrl);
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const code = await new Promise(resolve => rl.question('Enter the code from that page here: ', resolve));
+    rl.close();
+    const {tokens} = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+    fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens));
+ }
+
+ return oauth2Client;
 }
 
-module.exports = async (req, res) => {
-  // Hardcoded video ID for testing
-  const videoId = 'f2kNGLAAUdY';
-  try {
-    const captions = await getVideoCaptions(videoId);
-    res.status(200).send(captions);
-  } catch (error) {
-    res.status(500).send('Internal Server Error');
-  }
-};
+// Function to get video captions
+async function getVideoCaptions(videoId, auth) {
+ const service = google.youtube({version: 'v3', auth});
+ const response = await service.captions.list({
+    part: 'snippet',
+    videoId: videoId,
+ });
+
+ if (response.data.items.length > 0) {
+    const trackId = response.data.items[0].id;
+    const captionsResponse = await service.captions.download({
+      id: trackId,
+    });
+    return captionsResponse.data;
+ } else {
+    return 'No captions available for this video.';
+ }
+}
+
+// Main function to run the script
+async function main() {
+ const auth = await authorize();
+ const videoId = 'YOUR_VIDEO_ID_HERE'; // Replace with your video ID
+ const captions = await getVideoCaptions(videoId, auth);
+ console.log(captions);
+}
+
+main().catch(console.error);
